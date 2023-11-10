@@ -24,10 +24,3 @@ This repository contains Python scripts for data visualization using Matplotlib.
 - Python 3.x
 - Matplotlib library
 
-## Getting Started
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/1Mashilo/data-visualization.git
-   cd data-visualization-scripts
