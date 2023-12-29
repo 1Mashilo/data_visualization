@@ -1,48 +1,60 @@
 import requests
 import plotly.express as px
+import pandas as pd
 
-# Make an API call and check the response.
-url = "https://api.github.com/search/repositories"
-url += "?q=language:python+sort:stars+stars:>10000"
-headers = {"Accept": "application/vnd.github.v3+json"}
-r = requests.get(url, headers=headers)
+# Construct API URL using f-strings for readability
+url = f"https://api.github.com/search/repositories?q=language:python+sort:stars+stars:>10000"
 
-# Print the status code.
-print(f"Status code: {r.status_code}")
+# Make the API request and handle potential errors
+try:
+    response = requests.get(url)
+    response.raise_for_status()  # Raise an exception for error codes
+except requests.exceptions.RequestException as e:
+    print(f"Error fetching data: {e}")
+    # Add appropriate handling for the error, e.g., exit the script or log the error
+    # return or exit(1)
 
-# Process overall results.
-response_dict = r.json()
-print(f"Complete results: {not response_dict['incomplete_results']}")
+# Process response directly as JSON
+data = response.json()
 
-# Process repository information.
-repo_dicts = response_dict['items']
-repo_names, stars, hover_texts = [], [], []
+# Extract repository information using list comprehensions
+repo_links = [
+    f"<a href='{repo['html_url']}' target='_blank'>{repo['name']}</a>"
+    for repo in data["items"]
+]
+stars = [repo["stargazers_count"] for repo in data["items"]]
+forks = [repo["forks_count"] for repo in data["items"]]  # New: Extract forks count
 
-for repo_dict in repo_dicts:
-    repo_names.append(repo_dict['name'])
-    stars.append(repo_dict['stargazers_count'])
-    
-    # Build hover texts.
-    owner = repo_dict['owner']['login']
-    description = repo_dict['description']
-    hover_text = f"{owner}<br />{description}"
-    hover_texts.append(hover_text)
+# Create a DataFrame from the lists
+df = pd.DataFrame({"Repository": repo_links, "Stars": stars, "Forks": forks})
 
-# Make visualization.
-title = "Most-Starred Python Projects on GitHub"
-labels = {'x': 'Repository', 'y': 'Stars'}
-
-# Make visualization with hover texts.
-fig = px.bar(
-    x=repo_names,
-    y=stars,
-    title=title,
-    labels=labels,
-    hover_data={'hover_texts': hover_texts},
+# Create the scatter plot with enhanced interactivity and styling
+fig = px.scatter(
+    df,
+    x="Stars",
+    y="Forks",
+    title="GitHub Python Projects: Stars vs Forks",
+    template="plotly_dark",  # Apply a dark theme for a modern look
+    labels={"Stars": "Number of Stars", "Forks": "Number of Forks"},
+    size="Stars",  # Size of markers represents the number of stars
+    color="Forks",  # Color of markers represents the number of forks
+    hover_name="Repository",  # Display repository names on hover
+)
+fig.update_layout(
+    title_font_size=32,  # Increased title font size for better readability
+    title_x=0.8,         # Centered the title
+    xaxis_title_font_size=20,
+    yaxis_title_font_size=20,
+    grid=dict(rows=1, columns=1),
+    hovermode="closest",
+    dragmode="zoom",
+    selectdirection="h",
+    autosize=True,
+    margin=dict(autoexpand=True, l=40, r=40, t=50, b=30),  # Increased top margin
+    height=600,
+    width=1100,
 )
 
-# Rotate x-axis labels for better readability.
-fig.update_layout(xaxis_tickangle=-45)
-
 fig.show()
+
 
